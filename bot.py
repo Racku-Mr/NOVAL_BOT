@@ -7,7 +7,7 @@ import requests
 TOKEN = "7580768387:AAFbDPp9dIm2zTYhOCXi8VHiV65Nu7P54Jg"
 BOT_USERNAME = "TRACKER_R_N_bot"
 API_URL = f"https://api.telegram.org/bot{TOKEN}"
-DOMAIN = "https://noval-bot.onrender.com"  # your Render domain
+DOMAIN = "https://noval-bot.onrender.com"  # Your Render domain
 USER_DB = "users.json"
 
 # === APP INIT ===
@@ -40,9 +40,9 @@ def webhook():
         message = update["message"]
         chat_id = message["chat"]["id"]
         full_text = message.get("text", "")
-        text = full_text.split()[0].lower()
+        text = full_text.strip().lower()
         user_id = str(chat_id)
-        username = message["from"].get("username", "Unknown")
+        username = message["from"].get("username") or f"User_{user_id}"
 
         users = load_users()
 
@@ -50,7 +50,7 @@ def webhook():
             users[user_id] = {"username": username, "referrals": 0}
 
         # === /start ===
-        if text == "/start":
+        if text.startswith("/start"):
             ref_id = None
             if " " in full_text:
                 try:
