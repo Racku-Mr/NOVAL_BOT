@@ -15,6 +15,7 @@ USER_DB = "users.json"
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 
+# Create users.json if it doesn't exist
 if not os.path.exists(USER_DB):
     with open(USER_DB, "w") as f:
         json.dump({}, f)
@@ -53,13 +54,17 @@ def webhook():
         if user_id not in users:
             users[user_id] = {"username": username, "referrals": 0}
 
+        # === /start ===
         if text.startswith("/start"):
             ref_id = None
             if " " in full_text:
-                ref_id = full_text.split()[1]
-                if ref_id != user_id and ref_id in users:
-                    users[ref_id]["referrals"] += 1
-                    send_message(ref_id, f"🎉 New referral joined!\nYou now have {users[ref_id]['referrals']}/5 referrals.")
+                try:
+                    ref_id = full_text.split()[1]
+                    if ref_id != user_id and ref_id in users:
+                        users[ref_id]["referrals"] += 1
+                        send_message(int(ref_id), f"🎉 New referral joined!\nYou now have {users[ref_id]['referrals']}/5 referrals.")
+                except Exception as e:
+                    logging.error(f"[ERROR] Referral logic failed: {e}")
 
             send_message(chat_id,
                 f"👋 Welcome *{username}*\n\n"
@@ -69,21 +74,25 @@ def webhook():
                 f"🔗 Your Invite Link:\nhttps://t.me/{BOT_USERNAME}?start={user_id}"
             )
 
+        # === /hack ===
         elif text == "/hack":
             send_message(chat_id, "🧲 *Free Logger Link:*\nhttps://yourdomain.com/f/")
 
+        # === /advancebot ===
         elif text == "/advancebot":
             if users[user_id]["referrals"] >= 5:
                 send_message(chat_id, "🔓 *Premium Logger Link:*\nhttps://yourdomain.com/p/")
             else:
                 send_message(chat_id, f"❌ You need 5 referrals to unlock Premium.\nYou have {users[user_id]['referrals']}.")
 
+        # === /refer ===
         elif text == "/refer":
             send_message(chat_id,
                 f"👥 You have {users[user_id]['referrals']} referrals.\n\n"
-                f"🔗 Invite Link:\nhttps://t.me/{BOT_USERNAME}?start={user_id}"
+                f"🔗 Your Invite Link:\nhttps://t.me/{BOT_USERNAME}?start={user_id}"
             )
 
+        # === /about ===
         elif text == "/about":
             send_message(chat_id,
                 "🤖 *TRACKER_R_N_bot*\n"
@@ -95,6 +104,7 @@ def webhook():
                 f"• Invite others: https://t.me/{BOT_USERNAME}?start=YOUR_ID"
             )
 
+        # Save updated user data
         save_users(users)
 
     return jsonify({"status": "ok"})
@@ -111,6 +121,6 @@ def setwebhook():
     logging.info(f"[SETWEBHOOK] Response: {res.text}")
     return res.text
 
-# === LOCAL RUN ===
+# === RUN LOCAL ===
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
