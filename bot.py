@@ -7,7 +7,7 @@ import requests
 TOKEN = "7580768387:AAFbDPp9dIm2zTYhOCXi8VHiV65Nu7P54Jg"
 BOT_USERNAME = "TRACKER_R_N_bot"
 API_URL = f"https://api.telegram.org/bot{TOKEN}"
-DOMAIN = "https://noval-bot.onrender.com"  # change to your render domain
+DOMAIN = "https://noval-bot.onrender.com"  # your Render domain
 USER_DB = "users.json"
 
 # === APP INIT ===
@@ -46,22 +46,20 @@ def webhook():
 
         users = load_users()
 
-        # initialize user if not exists
         if user_id not in users:
             users[user_id] = {"username": username, "referrals": 0}
 
-        # === /start with referral logic ===
+        # === /start ===
         if text == "/start":
             ref_id = None
             if " " in full_text:
                 try:
                     ref_id = full_text.split()[1]
+                    if ref_id != user_id and ref_id in users:
+                        users[ref_id]["referrals"] += 1
+                        send_message(ref_id, f"🎉 New referral joined!\nYou now have {users[ref_id]['referrals']}/5 referrals.")
                 except:
-                    ref_id = None
-
-            if ref_id and ref_id != user_id and ref_id in users:
-                users[ref_id]["referrals"] += 1
-                send_message(ref_id, f"🎉 New referral joined!\nYou now have {users[ref_id]['referrals']}/5 referrals.")
+                    pass
 
             send_message(chat_id,
                 f"👋 Welcome *{username}*\n\n"
