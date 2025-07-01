@@ -6,9 +6,9 @@ import requests
 TOKEN = "7580768387:AAFbDPp9dIm2zTYhOCXi8VHiV65Nu7P54Jg"
 API_URL = f"https://api.telegram.org/bot{TOKEN}"
 DOMAIN = "https://noval-bot.onrender.com"
+USER_DB = "users.json"
 
 app = Flask(__name__)
-USER_DB = "users.json"
 
 if not os.path.exists(USER_DB):
     with open(USER_DB, "w") as f:
@@ -56,11 +56,11 @@ def webhook():
             send_message(chat_id, f"👋 Welcome *{username}*\nUse /hack for Free Logger\nUse /advencebot for Premium Logger\nCheck /refer for your referrals.\n\nYour link:\nhttps://t.me/TRACKER_R_N_bot?start={user_id}")
 
         elif text == "/hack":
-            send_message(chat_id, "🧲 *Free Logger Link:*\nhttps://yourdomain.com/f/")  # ← Replace this
+            send_message(chat_id, "🧲 *Free Logger Link:*\nhttps://yourdomain.com/f/")
 
         elif text == "/advencebot":
             if users[user_id]["referrals"] >= 5:
-                send_message(chat_id, "🔓 *Premium Logger Link:*\nhttps://yourdomain.com/p/")  # ← Replace this
+                send_message(chat_id, "🔓 *Premium Logger Link:*\nhttps://yourdomain.com/p/")
             else:
                 send_message(chat_id, f"❌ You need 5 referrals to unlock Premium.\nYou have {users[user_id]['referrals']}.")
 
