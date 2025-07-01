@@ -2,6 +2,7 @@ import os
 import json
 import logging
 import requests
+import html
 from flask import Flask, request, jsonify
 
 # === CONFIG ===
@@ -31,8 +32,8 @@ def save_users(users):
 def send_message(chat_id, text):
     res = requests.post(f"{API_URL}/sendMessage", json={
         "chat_id": chat_id,
-        "text": text,
-        "parse_mode": "Markdown"
+        "text": html.escape(text),
+        "parse_mode": "HTML"
     })
     logging.info(f"[SEND] To {chat_id} | Status: {res.status_code} | Response: {res.text}")
 
@@ -67,7 +68,7 @@ def webhook():
                     logging.error(f"[ERROR] Referral logic failed: {e}")
 
             send_message(chat_id,
-                f"👋 Welcome *{username}*\n\n"
+                f"👋 Welcome <b>{username}</b>\n\n"
                 "🧲 Use /hack for Free Logger\n"
                 "🔐 Use /advancebot for Premium Logger\n"
                 "👥 Use /refer to see your referrals\n\n"
@@ -76,12 +77,12 @@ def webhook():
 
         # === /hack ===
         elif text == "/hack":
-            send_message(chat_id, "🧲 *Free Logger Link:*\nhttps://yourdomain.com/f/")
+            send_message(chat_id, "🧲 <b>Free Logger Link:</b>\nhttps://yourdomain.com/f/")
 
         # === /advancebot ===
         elif text == "/advancebot":
             if users[user_id]["referrals"] >= 5:
-                send_message(chat_id, "🔓 *Premium Logger Link:*\nhttps://yourdomain.com/p/")
+                send_message(chat_id, "🔓 <b>Premium Logger Link:</b>\nhttps://yourdomain.com/p/")
             else:
                 send_message(chat_id, f"❌ You need 5 referrals to unlock Premium.\nYou have {users[user_id]['referrals']}.")
 
@@ -95,16 +96,15 @@ def webhook():
         # === /about ===
         elif text == "/about":
             send_message(chat_id,
-                "🤖 *TRACKER_R_N_bot*\n"
+                "<b>🤖 TRACKER_R_N_bot</b>\n"
                 "👤 Made by: @rack_mr\n\n"
-                "🧲 *Features:*\n"
+                "🧲 <b>Features:</b>\n"
                 "• Free Logger → /hack\n"
                 "• Premium Logger → /advancebot\n"
                 "• Referral System → /refer\n"
                 f"• Invite others: https://t.me/{BOT_USERNAME}?start=YOUR_ID"
             )
 
-        # Save updated user data
         save_users(users)
 
     return jsonify({"status": "ok"})
@@ -121,6 +121,6 @@ def setwebhook():
     logging.info(f"[SETWEBHOOK] Response: {res.text}")
     return res.text
 
-# === RUN LOCAL ===
+# === LOCAL RUN ===
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=10000)
