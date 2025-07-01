@@ -1,67 +1,86 @@
+import os
+import json
+from flask import Flask, request
+import requests
 
-import os, logging
-from telegram import Update
-from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
-from sqlite3 import connect
+TOKEN = "7580768387:AAFbDPp9dIm2zTYhOCXi8VHiV65Nu7P54Jg"
+API_URL = f"https://api.telegram.org/bot{TOKEN}"
+DOMAIN = "https://noval-bot.onrender.com"
 
-BOT_TOKEN = "YOUR_BOT_TOKEN"
-DB = "bot.db"
+app = Flask(__name__)
+USER_DB = "users.json"
 
-logging.basicConfig(level=logging.INFO)
-conn = connect(DB)
-conn.execute("CREATE TABLE IF NOT EXISTS users(uid INTEGER PRIMARY KEY, ref_count INTEGER DEFAULT 0)")
-conn.commit()
+if not os.path.exists(USER_DB):
+    with open(USER_DB, "w") as f:
+        json.dump({}, f)
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    uid = update.effective_user.id
-    args = context.args[0] if context.args else None
-    if args and args.isdigit():
-        conn.execute("UPDATE users SET ref_count = ref_count + 1 WHERE uid=?", (int(args),))
-        conn.commit()
-    conn.execute("INSERT OR IGNORE INTO users(uid) VALUES(?)", (uid,))
-    conn.commit()
-    msg = '''🌀 Welcome to JATT LOGGER v2.7 – Ethical Info Bot ⚙️
+def load_users():
+    with open(USER_DB) as f:
+        return json.load(f)
 
-👑 FIRST OFFICIAL COLLAB: Mr_rack x Noval
-Free Mode = 15 features | Premium Mode = 23 features (unlock after 5 referrals)
-🔗 /hack – Free Logger
-🔐 /advencebot – Premium Logger (after 5 referrals)
+def save_users(users):
+    with open(USER_DB, "w") as f:
+        json.dump(users, f, indent=2)
 
-⚠️ Disclaimer: Educational use only.
+def send_message(chat_id, text):
+    requests.post(f"{API_URL}/sendMessage", json={
+        "chat_id": chat_id,
+        "text": text,
+        "parse_mode": "Markdown"
+    })
 
-Bot by Mr_rack x noval 🚀'''
-    await update.message.reply_text(msg)
+@app.route(f"/{TOKEN}", methods=["POST"])
+def webhook():
+    update = request.get_json()
+    if "message" in update:
+        message = update["message"]
+        chat_id = message["chat"]["id"]
+        text = message.get("text", "")
+        user_id = str(chat_id)
+        username = message["from"].get("username", "Unknown")
 
-async def hack(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    link = "https://yourdomain.com/f/index.html"
-    await update.message.reply_text(f"✅ Free Logger Activated\n🔗 {link}\nBot by Mr_rack x noval")
+        users = load_users()
+        if user_id not in users:
+            users[user_id] = {
+                "username": username,
+                "referrals": 0
+            }
 
-async def advencebot(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    uid = update.effective_user.id
-    row = conn.execute("SELECT ref_count FROM users WHERE uid=?", (uid,)).fetchone()
-    count = row[0] if row else 0
-    if count < 5:
-        msg = f"🔐 Locked! You need 5 referrals to unlock.\n👥 {count}/5 done"
-        await update.message.reply_text(msg)
-    else:
-        link = "https://yourdomain.com/p/index.html"
-        await update.message.reply_text(f"👑 Premium Logger Activated\n🔗 {link}\nBot by Mr_rack x noval")
+        if text.startswith("/start"):
+            if " " in text:
+                ref_id = text.split()[1]
+                if ref_id != user_id and ref_id in users:
+                    users[ref_id]["referrals"] += 1
+                    save_users(users)
+                    send_message(ref_id, f"🎉 You got a new referral!\nTotal: {users[ref_id]['referrals']}/5")
+            send_message(chat_id, f"👋 Welcome *{username}*\nUse /hack for Free Logger\nUse /advencebot for Premium Logger\nCheck /refer for your referrals.\n\nYour link:\nhttps://t.me/TRACKER_R_N_bot?start={user_id}")
 
-async def refer(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    uid = update.effective_user.id
-    row = conn.execute("SELECT ref_count FROM users WHERE uid=?", (uid,)).fetchone()
-    count = row[0] if row else 0
-    await update.message.reply_text(f"👥 Your referrals: {count}/5")
+        elif text == "/hack":
+            send_message(chat_id, "🧲 *Free Logger Link:*\nhttps://yourdomain.com/f/")  # ← Replace this
 
-async def about(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    msg = "📌 JATT LOGGER BOT v2.7\nCreated by Mr_rack x Noval\nEducational logger with Free & Premium modes."
-    await update.message.reply_text(msg)
+        elif text == "/advencebot":
+            if users[user_id]["referrals"] >= 5:
+                send_message(chat_id, "🔓 *Premium Logger Link:*\nhttps://yourdomain.com/p/")  # ← Replace this
+            else:
+                send_message(chat_id, f"❌ You need 5 referrals to unlock Premium.\nYou have {users[user_id]['referrals']}.")
+
+        elif text == "/refer":
+            send_message(chat_id, f"👥 You have {users[user_id]['referrals']} referrals.\nYour link:\nhttps://t.me/TRACKER_R_N_bot?start={user_id}")
+
+        elif text == "/about":
+            send_message(chat_id, "🤖 *TRACKER_R_N_bot*\nMade by: @rack_mr\nFree + Premium Logger with referral unlock system.")
+
+        save_users(users)
+    return "ok"
+
+@app.route("/", methods=["GET"])
+def home():
+    return "✅ Bot is Running!"
+
+@app.route("/setwebhook", methods=["GET"])
+def setwebhook():
+    r = requests.get(f"{API_URL}/setWebhook?url={DOMAIN}/{TOKEN}")
+    return r.text
 
 if __name__ == "__main__":
-    app = ApplicationBuilder().token(BOT_TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CommandHandler("hack", hack))
-    app.add_handler(CommandHandler("advencebot", advencebot))
-    app.add_handler(CommandHandler("refer", refer))
-    app.add_handler(CommandHandler("about", about))
-    app.run_polling()
+    app.run(host="0.0.0.0", port=10000)
